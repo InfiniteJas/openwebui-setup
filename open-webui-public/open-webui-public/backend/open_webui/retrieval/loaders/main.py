@@ -4,6 +4,7 @@ import ftfy
 import re
 import sys
 import os
+from pathlib import Path
 
 from langchain_community.document_loaders import (
     AzureAIDocumentIntelligenceLoader,
@@ -105,17 +106,25 @@ class TikaLoader:
     def load(self) -> list[Document]:
         if not self.is_safe_url(self.url):
             raise ValueError(f"Blocked potentially unsafe URL: {self.url}")
-        
-        if not os.path.isfile(self.file_path):
-            raise ValueError(f"Invalid file path: {self.file_path}")
-        
-        file_size = os.path.getsize(self.file_path)
-        if file_size > 100 * 1024 * 1024:  # 100MB
-            raise ValueError(f"File too large: {file_size} bytes")
-        
+
         try:
-            with open(self.file_path, "rb") as f:
-                data = f.read()
+            file_path = Path(self.file_path).resolve()
+            safe_dir = Path("/app/backend/data/uploads").resolve()  # или импортируй из env.py
+    
+            if not str(file_path).startswith(str(safe_dir)):
+                raise ValueError(f"Unsafe file path: {file_path}")
+    
+            if not file_path.is_file():
+                raise ValueError(f"Invalid file path: {file_path}")
+    
+            if file_path.stat().st_size > 100 * 1024 * 1024:
+                raise ValueError(f"File too large: {file_path.stat().st_size} bytes")
+    
+            with file_path.open("rb") as file:
+                data = file.read()
+    
+            return self.process_file(data)
+    
         except (OSError, PermissionError) as e:
             raise ValueError(f"Cannot read file: {e}") from e
 
