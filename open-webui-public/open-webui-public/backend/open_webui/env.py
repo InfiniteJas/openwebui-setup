@@ -148,21 +148,14 @@ def parse_section(section):
         items.append({"title": title, "content": content, "raw": raw_html})
     return items
 
-
 try:
     changelog_path = BASE_DIR / "CHANGELOG.md"
     abs_path = changelog_path.resolve()
 
     if not str(abs_path).startswith(str(BASE_DIR.resolve())):
         raise Exception("Unsafe path")
-    
-    if not abs_path.is_file():
-        raise Exception("File not found")
-    
-    if abs_path.name != "CHANGELOG.md":
-        raise Exception("Invalid file name")
 
-    with open(abs_path, "r", encoding="utf8") as file:
+    with abs_path.open("r", encoding="utf8") as file:
         changelog_content = file.read()
 
 except Exception:
