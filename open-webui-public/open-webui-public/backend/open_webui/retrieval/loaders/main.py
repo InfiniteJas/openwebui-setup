@@ -157,28 +157,40 @@ class DoclingLoader:
         self.mime_type = mime_type
 
     def load(self) -> list[Document]:
-        if not os.path.isfile(self.file_path):
-            raise ValueError("Invalid file path")
-        
-        if os.path.getsize(self.file_path) > 50 * 1024 * 1024:  # 50MB
-            raise ValueError("File too large")
-        
-        with open(self.file_path, "rb") as f:
-            files = {
-                "files": (
-                    os.path.basename(self.file_path),
-                    f,
-                    self.mime_type or "application/octet-stream",
-                )
-            }
+        try:
+            file_path = Path(self.file_path).resolve()
+            safe_base = Path("/app/backend/data/uploads").resolve()
+    
+            if not str(file_path).startswith(str(safe_base)):
+                raise ValueError("Unsafe file path")
+    
+            if not file_path.is_file():
+                raise ValueError("Invalid file path")
+    
+            if file_path.stat().st_size > 50 * 1024 * 1024:
+                raise ValueError("File too large")
+    
+            with file_path.open("rb") as f:
+                files = {
+                    "files": (
+                        file_path.name,
+                        f,
+                        self.mime_type or "application/octet-stream",
+                    )
+                }
+    
+                params = {
+                    "image_export_mode": "placeholder",
+                    "table_mode": "accurate",
+                }
+    
+                endpoint = f"{self.url}/v1alpha/convert/file"
+                r = requests.post(endpoint, files=files, data=params, timeout=10)
+    
+            return self.process_response(r)
 
-            params = {
-                "image_export_mode": "placeholder",
-                "table_mode": "accurate",
-            }
-
-            endpoint = f"{self.url}/v1alpha/convert/file"
-            r = requests.post(endpoint, files=files, data=params, timeout=10)
+        except (OSError, PermissionError) as e:
+            raise ValueError(f"Cannot read or send file:")
 
         if r.ok:
             result = r.json()
