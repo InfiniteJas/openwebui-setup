@@ -491,16 +491,19 @@ def transcribe(request: Request, file_path):
         if not re.match(r'^[a-zA-Z0-9_-]+$', id):
             raise Exception("Invalid file ID format")
 
-        file_dir_path = Path(file_dir)
-        transcript_file_path = file_dir_path / f"{id}.json"
+        file_dir_path = Path(file_dir).resolve()
+        transcript_file_path = (file_dir_path / f"{id}.json").resolve()
 
         try:
-            transcript_file_path.resolve().relative_to(file_dir_path.resolve())
+            transcript_file_path.relative_to(file_dir_path)
         except ValueError:
             raise Exception("Unsafe transcript file path")
 
-        with open(transcript_file_path, "w") as f:
-            json.dump(data, f)
+        try:
+            with transcript_file_path.open("w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except (OSError, PermissionError) as e:
+            raise Exception(f"Failed to write transcript: {e}") from e
 
         log.debug(data)
         return data
