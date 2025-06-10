@@ -65,18 +65,17 @@ def override_static(path: str, content: str):
     target_file_path = static_dir_path / path
     
     try:
-        target_file_resolved = target_file_path.resolve()
-        target_file_resolved.relative_to(static_dir_path)
+        resolved_path = target_file_path.resolve()
+        static_dir_resolved = static_dir_path.resolve()
+    
+        resolved_path.relative_to(static_dir_resolved)
     except ValueError:
         raise Exception("Unsafe file path")
-
-    target_file_resolved.parent.mkdir(parents=True, exist_ok=True)
-
-    if target_file_path.is_absolute() or ".." in str(target_file_path):
-        raise Exception("Unsafe file path")
-
-    with open(target_file_resolved, "wb") as f:
-        f.write(base64.b64decode(content))  # Convert Base64 back to raw binary
+    
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with resolved_path.open("wb") as f:
+        f.write(base64.b64decode(content))
 
 
 def get_license_data(app, key):
@@ -107,11 +106,11 @@ def get_license_data(app, key):
                         for p, c in v.items():
                             globals().get("override_static", lambda a, b: None)(p, c)
                     elif k == "count":
-                        setattr(app.state, "USER_COUNT", v)
+                        app.state.USER_COUNT = v
                     elif k == "name":
-                        setattr(app.state, "WEBUI_NAME", v)
+                        app.state.WEBUI_NAME = v
                     elif k == "metadata":
-                        setattr(app.state, "LICENSE_METADATA", v)
+                        app.state.LICENSE_METADATA = v
                 return True
             else:
                 log.error(
