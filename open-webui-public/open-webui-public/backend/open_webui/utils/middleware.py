@@ -2041,22 +2041,16 @@ async def process_chat_response(
                                                 id = str(uuid4())
 
                                                 # ensure the path exists
-                                                images_dir = os.path.join(CACHE_DIR, "images")
-                                                if not os.path.abspath(images_dir).startswith(os.path.abspath(CACHE_DIR)):
-                                                    raise Exception("Unsafe image directory path")
-
-                                                os.makedirs(images_dir, exist_ok=True)
-
-                                                image_path = os.path.join(images_dir, f"{id}.png")
-                                                if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
+                                                base_dir_obj = Path(CACHE_DIR)
+                                                images_dir_obj = base_dir_obj / "images"
+                                                images_dir_obj.mkdir(parents=True, exist_ok=True)
+                                                
+                                                path_obj = images_dir_obj / f"{id}.png"
+                                                
+                                                if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
                                                     raise Exception("Unsafe image file path")
-
-                                                abs_path = os.path.abspath(image_path)
-
-                                                if os.path.isabs(image_path) or ".." in image_path:
-                                                    raise Exception("Unsafe file path detected")
-
-                                                with open(abs_path, "wb") as f:
+                                                
+                                                with path_obj.open("wb") as f:
                                                     f.write(base64.b64decode(line.split(",")[1]))
 
                                                 stdoutLines[idx] = (
@@ -2074,22 +2068,16 @@ async def process_chat_response(
                                                 id = str(uuid4())
 
                                                 # ensure the path exists
-                                                images_dir = os.path.join(CACHE_DIR, "images")
-                                                if not os.path.abspath(images_dir).startswith(os.path.abspath(CACHE_DIR)):
-                                                    raise Exception("Unsafe image directory path")
-
-                                                os.makedirs(images_dir, exist_ok=True)
-
-                                                image_path = os.path.join(images_dir, f"{id}.png")
-                                                if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
+                                                base_dir_obj = Path(CACHE_DIR)
+                                                images_dir_obj = base_dir_obj / "images"
+                                                images_dir_obj.mkdir(parents=True, exist_ok=True)
+                                                
+                                                path_obj = images_dir_obj / f"{id}.png"
+                                                
+                                                if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
                                                     raise Exception("Unsafe image file path")
-
-                                                abs_path = os.path.abspath(image_path)
-
-                                                if os.path.isabs(image_path) or ".." in image_path:
-                                                    raise Exception("Unsafe file path detected")
-
-                                                with open(abs_path, "wb") as f:
+                                                
+                                                with path_obj.open("wb") as f:
                                                     f.write(base64.b64decode(line.split(",")[1]))
 
                                                 resultLines[idx] = (
