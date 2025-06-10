@@ -64,17 +64,17 @@ class LocalStorageProvider(StorageProvider):
         contents = file.read()
         if not contents:
             raise ValueError(ERROR_MESSAGES.EMPTY_CONTENT)
-        file_path = f"{UPLOAD_DIR}/{filename}"
-
-        abs_path = os.path.abspath(file_path)
-
-        base_dir = os.path.abspath(SPEECH_CACHE_DIR)
-        if not abs_path.startswith(base_dir):
-            raise Exception("Unsafe file path detected")
         
-        with open(file_path, "wb") as f:
+        safe_basename = Path(filename).name
+        base_dir_obj = Path(UPLOAD_DIR)
+        path_obj = base_dir_obj / safe_basename
+    
+        if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
+            raise Exception("Unsafe file path detected")
+    
+        with path_obj.open("wb") as f:
             f.write(contents)
-        return contents, file_path
+        return contents, str(path_obj)
 
     @staticmethod
     def get_file(file_path: str) -> str:
@@ -168,17 +168,19 @@ class S3StorageProvider(StorageProvider):
         """Handles uploading of the file to S3 storage."""
         _, file_path = LocalStorageProvider.upload_file(file, filename)
         try:
-            s3_key = "/".join([self.key_prefix.strip("/"), filename])
-            self.s3_client.upload_file(file_path, self.bucket_name, s3_key)
-            abs_path = os.path.abspath(file_path)
-            base_dir = os.path.abspath(UPLOAD_DIR)
-            if not abs_path.startswith(base_dir):
+            path_obj = Path(file_path)
+            base_dir_obj = Path(UPLOAD_DIR)
+        
+            if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
                 raise Exception("Unsafe file path detected")
-                
-            if not os.path.exists(abs_path):
+            
+            if not path_obj.exists():
                 raise FileNotFoundError("File not found")
-                
-            with open(abs_path, "rb") as f:
+        
+            s3_key = "/".join([self.key_prefix.strip("/"), path_obj.name])
+            self.s3_client.upload_file(str(path_obj), self.bucket_name, s3_key)
+            
+            with path_obj.open("rb") as f:
                 file_content = f.read()
                 
             return (
@@ -334,24 +336,21 @@ class AzureStorageProvider(StorageProvider):
     def get_file(self, file_path: str) -> str:
         """Handles downloading of the file from Azure Blob Storage."""
         try:
-            filename = file_path.split("/")[-1]
-            safe_filename = os.path.basename(filename)
-            if not safe_filename or safe_filename != filename:
-                raise Exception("Invalid filename")
-                
-            local_file_path = os.path.join(UPLOAD_DIR, safe_filename)
-            blob_client = self.container_client.get_blob_client(filename)
-
-            abs_path = os.path.abspath(local_file_path)
-            base_dir = os.path.abspath(UPLOAD_DIR)
-            if not abs_path.startswith(base_dir):
-                raise Exception("Unsafe file path detected")
+            filename = Path(file_path).name
             
-            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
-
-            with open(abs_path, "wb") as download_file:
+            base_dir_obj = Path(UPLOAD_DIR)
+            local_path_obj = base_dir_obj / filename
+        
+            if not local_path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
+                raise Exception("Unsafe file path detected")
+        
+            blob_client = self.container_client.get_blob_client(filename)
+            
+            local_path_obj.parent.mkdir(parents=True, exist_ok=True)
+        
+            with local_path_obj.open("wb") as download_file:
                 download_file.write(blob_client.download_blob().readall())
-            return abs_path
+            return str(local_path_obj)
         except ResourceNotFoundError as e:
             raise RuntimeError(f"Error downloading file from Azure Blob Storage: {e}")
 
