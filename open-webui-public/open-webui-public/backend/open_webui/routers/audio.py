@@ -581,21 +581,22 @@ def transcribe(request: Request, file_path):
 
     elif request.app.state.config.STT_ENGINE == "deepgram":
         try:
-            if not os.path.abspath(file_path).startswith(os.path.abspath(file_dir)):
+            path_obj = Path(file_path)
+            dir_path_obj = Path(file_dir)
+        
+            if not path_obj.resolve().is_relative_to(dir_path_obj.resolve()):
                 raise Exception("Unsafe file path")
-            
+        
             if not re.match(r'^[a-zA-Z0-9_-]+$', id):
                 raise Exception("Invalid file ID format")
-            # Determine the MIME type of the file
-            mime, _ = mimetypes.guess_type(file_path)
+        
+            mime, _ = mimetypes.guess_type(path_obj)
             if not mime:
-                mime = "audio/wav"  # fallback to wav if undetectable
-
-            # Read the audio file
-            with open(file_path, "rb") as f:
+                mime = "audio/wav"
+        
+            with path_obj.open("rb") as f:
                 file_data = f.read()
-
-            # Build headers and parameters
+        
             headers = {
                 "Authorization": f"Token {request.app.state.config.DEEPGRAM_API_KEY}",
                 "Content-Type": mime,
@@ -629,17 +630,18 @@ def transcribe(request: Request, file_path):
                 )
             data = {"text": transcript.strip()}
 
-            if not os.path.abspath(file_path).startswith(os.path.abspath(file_dir)):
-                raise Exception("Unsafe file path")
-            
             if not re.match(r'^[a-zA-Z0-9_-]+$', id):
                 raise Exception("Invalid file ID format")
-
-            # Save transcript
-            transcript_file = f"{file_dir}/{id}.json"
-            with open(transcript_file, "w") as f:
+        
+            dir_path_obj = Path(file_dir)
+            transcript_path_obj = dir_path_obj / f"{id}.json"
+        
+            if not transcript_path_obj.resolve().is_relative_to(dir_path_obj.resolve()):
+                raise Exception("Unsafe file path")
+        
+            with transcript_path_obj.open("w") as f:
                 json.dump(data, f)
-
+        
             return data
 
         except Exception as e:
@@ -690,23 +692,24 @@ def transcription(
         )
 
     try:
-        ext = file.filename.split(".")[-1]
+        if not file.filename:
+            raise Exception("Filename cannot be empty")
+    
+        safe_basename = Path(file.filename).name
         id = uuid.uuid4()
-
-        filename = f"{id}.{ext}"
-        contents = file.file.read()
-
-        file_dir = f"{CACHE_DIR}/audio/transcriptions"
-        os.makedirs(file_dir, exist_ok=True)
-        file_path = f"{file_dir}/{filename}"
-
-        if not os.path.abspath(file_path).startswith(os.path.abspath(file_dir)):
-            raise Exception("Unsafe file path")
         
-        if not re.match(r'^[a-zA-Z0-9_-]+$', id):
-            raise Exception("Invalid file ID format")
-
-        with open(file_path, "wb") as f:
+        filename = f"{id}{Path(safe_basename).suffix}"
+        contents = file.file.read()
+    
+        dir_path = Path(CACHE_DIR) / "audio" / "transcriptions"
+        dir_path.mkdir(parents=True, exist_ok=True)
+        
+        file_path_obj = dir_path / filename
+    
+        if not file_path_obj.resolve().is_relative_to(dir_path.resolve()):
+            raise Exception("Unsafe file path")
+    
+        with file_path_obj.open("wb") as f:
             f.write(contents)
 
         try:
