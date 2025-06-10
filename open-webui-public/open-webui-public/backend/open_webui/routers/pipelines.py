@@ -243,18 +243,23 @@ async def upload_pipeline(
 
     r = None
     try:
-        # Проверка существования директории перед записью
-        if not file_path_resolved.parent.exists():
+        path_obj = Path(file_path_resolved)
+    
+        base_dir_obj = Path(UPLOAD_DIR)
+    
+        if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
+            raise Exception("Unsafe file path")
+    
+        if not path_obj.parent.exists():
             raise FileNotFoundError("Upload directory does not exist")
-
-        # Сохраняем файл
-        with open(file_path_resolved, "wb") as buffer:
+    
+        with path_obj.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-
+    
         url = request.app.state.config.OPENAI_API_BASE_URLS[urlIdx]
         key = request.app.state.config.OPENAI_API_KEYS[urlIdx]
-
-        with open(file_path_resolved, "rb") as f:
+    
+        with path_obj.open("rb") as f:
             files = {"file": f}
             r = requests.post(
                 f"{url}/pipelines/upload",
@@ -262,7 +267,7 @@ async def upload_pipeline(
                 files=files,
                 timeout=5,
             )
-
+    
         r.raise_for_status()
         data = r.json()
         return {**data}
