@@ -9,7 +9,6 @@ from typing import Callable, Optional
 import json
 import os
 
-
 import collections.abc
 from open_webui.env import SRC_LOG_LEVELS
 
@@ -259,15 +258,16 @@ def get_gravatar_url(email):
     return f"https://www.gravatar.com/avatar/{hash_hex}?d=mp"
 
 
-def calculate_sha256(file_path, chunk_size):
-    # Compute SHA-256 hash of a file efficiently in chunks
+def calculate_sha256(file_path: str, chunk_size: int) -> str:
     sha256 = hashlib.sha256()
-    abs_path = os.path.abspath(file_path)
-
-    if os.path.isabs(file_path) or ".." in file_path:
-        raise Exception("Unsafe file path detected")
     
-    with open(abs_path, "rb") as f:
+    path_obj = Path(file_path)
+    base_dir_obj = Path(UPLOAD_DIR)
+
+    if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
+        raise Exception("Unsafe file path detected")
+
+    with path_obj.open("rb") as f:
         while chunk := f.read(chunk_size):
             sha256.update(chunk)
     return sha256.hexdigest()
