@@ -94,21 +94,20 @@ def load_tools_module_by_id(toolkit_id, content=None):
     temp_file = tempfile.NamedTemporaryFile(delete=False)
     temp_file.close()
     try:
-        temp_file = os.path.abspath(temp_file)
-
-        if os.path.isabs(temp_file) or ".." in temp_file:
-            raise Exception("Unsafe file path detected")
-        
-        with open(temp_file.name, "w", encoding="utf-8") as f:
+        path_obj = Path(temp_file.name)
+        temp_dir_obj = Path(tempfile.gettempdir())
+    
+        if not path_obj.resolve().is_relative_to(temp_dir_obj.resolve()):
+            raise Exception("Unsafe temporary file path")
+    
+        with path_obj.open("w", encoding="utf-8") as f:
             f.write(content)
         module.__dict__["__file__"] = temp_file.name
-
-        # Executing the modified content in the created module's namespace
+    
         exec(content, module.__dict__)
         frontmatter = extract_frontmatter(content)
         log.info(f"Loaded module: {module.__name__}")
-
-        # Create and return the object if the class 'Tools' is found in the module
+    
         if hasattr(module, "Tools"):
             return module.Tools(), frontmatter
         else:
@@ -152,16 +151,16 @@ def load_function_module_by_id(function_id, content=None):
     temp_file = tempfile.NamedTemporaryFile(delete=False)
     temp_file.close()
     try:
-        temp_file = os.path.abspath(temp_file)
-
-        if os.path.isabs(temp_file) or ".." in temp_file:
-            raise Exception("Unsafe file path detected")
-        
-        with open(temp_file.name, "w", encoding="utf-8") as f:
+        path_obj = Path(temp_file.name)
+        temp_dir_obj = Path(tempfile.gettempdir())
+    
+        if not path_obj.resolve().is_relative_to(temp_dir_obj.resolve()):
+            raise Exception("Unsafe temporary file path")
+    
+        with path_obj.open("w", encoding="utf-8") as f:
             f.write(content)
         module.__dict__["__file__"] = temp_file.name
-
-        # Execute the modified content in the created module's namespace
+        
         exec(content, module.__dict__)
         frontmatter = extract_frontmatter(content)
         log.info(f"Loaded module: {module.__name__}")
