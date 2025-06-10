@@ -1501,15 +1501,15 @@ async def download_file_stream(
         async with session.get(file_url, headers=headers) as response:
             total_size = int(response.headers.get("content-length", 0)) + current_size
 
-            abs_path = os.path.abspath(file_path)
-            base_dir = os.path.abspath(UPLOAD_DIR)
-            if not abs_path.startswith(base_dir):
+            path_obj = Path(file_path)
+            base_dir_obj = Path(UPLOAD_DIR)
+            if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
                 raise Exception("Unsafe file path detected")
-
-            if not os.path.exists(abs_path):
+            
+            if not path_obj.exists():
                 raise FileNotFoundError("Unsafe or missing file")
-
-            with open(file_path, "ab+") as file:
+            
+            with path_obj.open("ab+") as file:
                 async for data in response.content.iter_chunked(chunk_size):
                     current_size += len(data)
                     file.write(data)
@@ -1606,15 +1606,16 @@ async def upload_model(
     # --- P1: save file locally ---
     chunk_size = 1024 * 1024 * 2  # 2 MB chunks
 
-    abs_path = os.path.abspath(file_path)
-    base_dir = os.path.abspath(UPLOAD_DIR)
-    if not abs_path.startswith(base_dir):
-        raise Exception("Unsafe file path detected")
-
-    if not os.path.exists(abs_path):
-        raise FileNotFoundError("Unsafe or missing file")
+    path_obj = Path(file_path)
+    base_dir_obj = Path(UPLOAD_DIR)
     
-    with open(file_path, "wb") as out_f:
+    if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
+        raise Exception("Unsafe file path detected")
+    
+    if not path_obj.exists():
+        raise FileNotFoundError("Unsafe or missing file")
+        
+    with path_obj.open("wb") as out_f:
         while True:
             chunk = file.file.read(chunk_size)
             # log.info(f"Chunk: {str(chunk)}") # DEBUG
@@ -1644,15 +1645,16 @@ async def upload_model(
                     yield f"data: {json.dumps(data_msg)}\n\n"
 
             # --- P3: Upload to ollama /api/blobs ---
-            abs_path = os.path.abspath(file_path)
-            base_dir = os.path.abspath(UPLOAD_DIR)
-            if not abs_path.startswith(base_dir):
-                raise Exception("Unsafe file path detected")
-
-            if not os.path.exists(abs_path):
-                raise FileNotFoundError("Unsafe or missing file")
+            path_obj = Path(file_path)
+            base_dir_obj = Path(UPLOAD_DIR)
             
-            with open(file_path, "rb") as f:
+            if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
+                raise Exception("Unsafe file path detected")
+            
+            if not path_obj.exists():
+                raise FileNotFoundError("Unsafe or missing file")
+                
+            with path_obj.open("rb") as f:
                 url = f"{ollama_url}/api/blobs/sha256:{file_hash}"
                 response = requests.post(url, data=f, timeout = 6)
 
