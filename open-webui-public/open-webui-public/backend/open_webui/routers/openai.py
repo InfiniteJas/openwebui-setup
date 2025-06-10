@@ -241,26 +241,25 @@ async def speech(request: Request, user=Depends(get_verified_user)):
             r.raise_for_status()
 
             # Save the streaming content to a file
-            abs_path = os.path.abspath(file_path)
-
-            base_dir = os.path.abspath(SPEECH_CACHE_DIR)
-            if not abs_path.startswith(base_dir):
+            path_obj = Path(file_path)
+            base_dir_obj = Path(SPEECH_CACHE_DIR)
+            
+            if not path_obj.resolve().is_relative_to(base_dir_obj.resolve()):
                 raise Exception("Unsafe file path detected")
             
-            with open(file_path, "wb") as f:
+            with path_obj.open("wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
 
-            abs_path_2 = os.path.abspath(file_body_path)
-
-            base_dir = os.path.abspath(SPEECH_CACHE_DIR)
-            if not abs_path_2.startswith(base_dir):
+            path_obj_2 = Path(file_body_path)
+            base_dir_obj_2 = Path(SPEECH_CACHE_DIR)
+            
+            if not path_obj_2.resolve().is_relative_to(base_dir_obj_2.resolve()):
                 raise Exception("Unsafe file path detected")
-
-            with open(file_body_path, "w") as f:
+            
+            with path_obj_2.open("w") as f:
                 json.dump(json.loads(body.decode("utf-8")), f)
-
-            # Return the saved file
+            
             return FileResponse(file_path)
 
         except Exception as e:
