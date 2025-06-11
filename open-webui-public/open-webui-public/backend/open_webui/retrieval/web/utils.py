@@ -140,13 +140,12 @@ class RateLimitMixin:
             time_since_last = datetime.now() - self.last_request_time
             if time_since_last < min_interval:
                 sleep_time = (min_interval - time_since_last).total_seconds()
-                if sleep_time > 1:
-                    log.warning(f"Skipping excessive sleep ({sleep_time}s) for rate limit")
-                elif sleep_time > 0:
-                    safe_sleep_time = min(sleep_time, 1.0)
-                    time.sleep(safe_sleep_time)
 
-                # time.sleep((min_interval - time_since_last).total_seconds())
+                safe_sleep_time = min(sleep_time, 1.0)
+                
+                if safe_sleep_time > 0:
+                    await asyncio.sleep(safe_sleep_time)
+    
         self.last_request_time = datetime.now()
 
 
