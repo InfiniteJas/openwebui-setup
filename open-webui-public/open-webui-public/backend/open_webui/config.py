@@ -881,13 +881,19 @@ OPENAI_API_CONFIGS = PersistentConfig(
 )
 
 # Get the actual OpenAI API key based on the base URL
-OPENAI_API_KEY = ""
+OPENAI_API_KEY = None
 try:
-    OPENAI_API_KEY = OPENAI_API_KEYS.value[
+    key_from_config = OPENAI_API_KEYS.value[
         OPENAI_API_BASE_URLS.value.index("https://api.openai.com/v1")
     ]
-except Exception:
+    if key_from_config:
+        OPENAI_API_KEY = key_from_config
+except (ValueError, IndexError):
     pass
+
+if not OPENAI_API_KEY:
+    log.info("Default OpenAI API key is not configured, continuing without it.")
+
 OPENAI_API_BASE_URL = "https://api.openai.com/v1"
 
 ####################################
