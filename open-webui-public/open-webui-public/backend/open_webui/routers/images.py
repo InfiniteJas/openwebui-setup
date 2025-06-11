@@ -7,6 +7,7 @@ import mimetypes
 import re
 from pathlib import Path
 from typing import Optional
+import httpx
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
@@ -516,13 +517,13 @@ async def image_generations(
             }
 
             # Use asyncio.to_thread for the requests.post call
-            r = await asyncio.to_thread(
-                requests.post,
-                url=f"{request.app.state.config.IMAGES_OPENAI_API_BASE_URL}/images/generations",
-                json=data,
-                headers=headers,
-                timeout=(10, 30)
-            )
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    url=f"{request.app.state.config.IMAGES_OPENAI_API_BASE_URL}/images/generations",
+                    json=data,
+                    headers=headers,
+                    timeout=httpx.Timeout(30.0, connect=10.0),
+                )
 
             r.raise_for_status()
             res = r.json()
@@ -554,13 +555,13 @@ async def image_generations(
             }
 
             # Use asyncio.to_thread for the requests.post call
-            r = await asyncio.to_thread(
-                requests.post,
-                url=f"{request.app.state.config.IMAGES_GEMINI_API_BASE_URL}/models/{model}:predict",
-                json=data,
-                headers=headers,
-                timeout=30
-            )
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    url=f"{request.app.state.config.IMAGES_GEMINI_API_BASE_URL}/models/{model}:predict",
+                    json=data,
+                    headers=headers,
+                    timeout=30.0,
+                )
 
             r.raise_for_status()
             res = r.json()
@@ -658,13 +659,13 @@ async def image_generations(
                 data["scheduler"] = request.app.state.config.AUTOMATIC1111_SCHEDULER
 
             # Use asyncio.to_thread for the requests.post call
-            r = await asyncio.to_thread(
-                requests.post,
-                url=f"{request.app.state.config.AUTOMATIC1111_BASE_URL}/sdapi/v1/txt2img",
-                json=data,
-                headers={"authorization": get_automatic1111_api_auth(request)},
-                timeout=30
-            )
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    url=f"{request.app.state.config.AUTOMATIC1111_BASE_URL}/sdapi/v1/txt2img",
+                    json=data,
+                    headers={"authorization": get_automatic1111_api_auth(request)},
+                    timeout=30.0,
+                )
 
             res = r.json()
             log.debug(f"res: {res}")
