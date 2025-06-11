@@ -371,23 +371,17 @@ def get_models(request: Request, user=Depends(get_verified_user)):
                     break
 
             if model_node_id:
-                model_list_key = ""
-
+                input_required = info[workflow[model_node_id]["class_type"]]["input"]["required"]
+    
+                model_list_key = next((key for key in input_required if "_name" in key), None)
+            
                 log.info(workflow[model_node_id]["class_type"])
-                for key in info[workflow[model_node_id]["class_type"]]["input"][
-                    "required"
-                ]:
-                    if "_name" in key:
-                        model_list_key = key
-                        break
-
+            
                 if model_list_key:
                     return list(
                         map(
                             lambda model: {"id": model, "name": model},
-                            info[workflow[model_node_id]["class_type"]]["input"][
-                                "required"
-                            ][model_list_key][0],
+                            input_required[model_list_key][0],
                         )
                     )
             else:
